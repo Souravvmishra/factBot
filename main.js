@@ -2,7 +2,8 @@ const { Telegraf } = require('telegraf')
 const { v4: uuidV4 } = require('uuid')
 require('dotenv').config()
 let factGenerator = require('./factGenerator')
-const { instaDown } = require('./jimplearn')
+const Jimp = require('jimp');
+
 
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
@@ -28,16 +29,33 @@ bot.command('fact', async (ctx) => {
 
 
 bot.on('photo', async (ctx) => {
-    // get the photo object
     const photo = ctx.message.photo[0]
-    // get the file URL
     const url = await ctx.telegram.getFileLink(photo)
-    // call your function on the URL
-    instaDown(photo)
-    // send back the edited photo
-    ctx.replyWithPhoto({ source: 'lena-pasted.jpg' })
-    ctx.deleteMessage(ctx.message.message_id)
+    Jimp.read(photo)
+        .then((image) => {
+            const imageWidth = image.getWidth();
+            const imageHeight = image.getHeight();
+            const removeHeight = 120; // Height to be removed from the bottom
 
+            image.crop(0, 0, imageWidth, imageHeight - removeHeight);
+
+            const x = Math.round((1000 - image.getWidth()) / 2);
+            const y = Math.round((1000 - image.getHeight()) / 2);
+
+            const squareImage = new Jimp(1000, 1000, 'black');
+
+            squareImage.composite(image, x, y);
+
+            // Save the modified image
+            return squareImage.write('lena-pasted.png');
+        })
+        .catch((err) => {
+            console.error(err);
+        });
+    ctx.replyWithPhoto({ source: 'lena-pasted.png' })
+    ctx.deleteMessage(ctx.message.message_id)
 })
+
+
 
 bot.launch()
